@@ -86,9 +86,13 @@
   <ItemGroup>
     <ClCompile Include="src\KinectReader.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\TextProcessor.cpp" />
+    <ClCompile Include="src\VideoProcessor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\KinectReader.h" />
+    <ClInclude Include="inc\TextProcessor.h" />
+    <ClInclude Include="inc\VideoProcessor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

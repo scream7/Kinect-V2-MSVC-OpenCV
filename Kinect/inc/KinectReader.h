@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <Kinect.h>
 #include "opencv2/opencv.hpp"
+#include "VideoProcessor.h"
+#include "TextProcessor.h"
 using namespace cv;
 class KinectReader
 {
@@ -88,7 +90,14 @@ private:
 	~KinectReader();
 
 	KinectReader& operator=(const KinectReader&);
-	VideoWriter videoWriter_;
+
+	//For video writer
+	VideoProcessor colorVideo_;
+	VideoProcessor depthVideo_;
+	VideoProcessor bodyIndexVideo_;
+
+	//Body data writer
+	TextProcessor bodyText_;
 
 	//For process color/depth image steps:
 	//step 1:Pre-Process frame

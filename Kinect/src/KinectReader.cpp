@@ -1,10 +1,10 @@
 #include "../inc/KinectReader.h"
 #include <iostream>
-#include <set>
 using namespace std;
-set<BYTE> sByte;
 KinectReader* KinectReader::instance_ = NULL;
 int KinectReader::nCount = 0;
+bool bRecordVideo = true;
+bool bRecordText = true;
 const UINT KinectReader::BodyColor_[6] = 
 {
 	//RBGA
@@ -58,20 +58,26 @@ KinectReader::KinectReader() :
 		pMultiSourceFrameReader_(NULL),
 		bInit_(false)
 {
-	bool bVideo = false;
-	//bVideo = videoWriter_.open("VideoTest.avi", -1, 25.0, Size(KinectReader::cColorWidth_/2, KinectReader::cColorHeight_/2));
-	if (!bVideo)
-	{
-		cout << "Video init failed." << endl;
-	}
 	pColorRGBX_ = new RGBQUAD[cColorHeight_ * cColorWidth_];
 	pDepthRGBX_ = new RGBQUAD[cDepthHeight_ * cDepthWidth_];
 	pBodyIndexUINT_ = new UINT[cBodyIndexHeight_ * cBodyIndexWidth_];
+	
+	bool bResult =
+		colorVideo_.Init(VideoProcessor::COLOR, cShowImageWidth_, cShowImageHeight_);
+	bResult &=
+		depthVideo_.Init(VideoProcessor::DEPTH, cDepthWidth_, cDepthHeight_);
+	bResult &=
+		bodyIndexVideo_.Init(VideoProcessor::BODYINDEX, cBodyIndexWidth_, cBodyIndexHeight_);
+	bResult &= 
+		bodyText_.Init(TextProcessor::BODY);
+	if (!bResult)
+	{
+		cout << "Video/Text init failed" << endl;
+	}
 }
 
 KinectReader::~KinectReader()
 {
-	videoWriter_.release();
 	if (pColorRGBX_)
 	{
 		delete[] pColorRGBX_;
@@ -88,6 +94,10 @@ KinectReader::~KinectReader()
 		pKinectSensor_->Release();
 		pKinectSensor_ = NULL;
 	}
+	colorVideo_.EndRecord();
+	depthVideo_.EndRecord();
+	bodyIndexVideo_.EndRecord();
+	bodyText_.EndRecord();
 }
 bool KinectReader::PreProcessFrame(IMultiSourceFrame* pMultiSourceFrame)
 {
@@ -353,7 +363,10 @@ void KinectReader::ProcessColorImage(RGBQUAD *pBuffer, int nWidth, int nHeight)
 	Mat ColorImage(nHeight, nWidth, CV_8UC4, pBuffer);
 	Mat ShowImage;
 	resize(ColorImage, ShowImage, Size(KinectReader::cShowImageWidth_, KinectReader::cShowImageHeight_));
-	//videoWriter_.write(ShowImage);
+	if (bRecordVideo)
+	{
+		colorVideo_.Record(ShowImage);
+	}
 	imshow("ColorImage", ShowImage);
 }
 void KinectReader::ProcessDepthImage(const UINT16* pBuffer, int nWidth , int nHeight , USHORT nMinDepth , USHORT nMaxDepth)
@@ -376,6 +389,11 @@ void KinectReader::ProcessDepthImage(const UINT16* pBuffer, int nWidth , int nHe
 		++pBuffer;
 	}
 	Mat resultImage(nHeight, nWidth, CV_8UC4, pDepthRGBX_);
+	if (bRecordVideo)
+	{
+		depthVideo_.Record(resultImage);
+	}
+
 	imshow("DepthImage", resultImage);
 }
 void KinectReader::ProcessBodyIndexImage(BYTE* pBuffer, int nWidth, int nHeight)
@@ -395,6 +413,10 @@ void KinectReader::ProcessBodyIndexImage(BYTE* pBuffer, int nWidth, int nHeight)
 		}
 	}
 	Mat BodyIndexImage(nHeight, nWidth, CV_8UC4, pBodyIndexUINT_);
+	if (bRecordVideo)
+	{
+		bodyIndexVideo_.Record(BodyIndexImage);
+	}
 	imshow("BodyIndexImage", BodyIndexImage);
 }
 void KinectReader::ProcessBodyData(int nBodyCount)
@@ -434,8 +456,14 @@ void KinectReader::ProcessBodyData(int nBodyCount)
 						ColorSpacePoint colorPoint;
 						pCoordinateMapper_->MapCameraPointToColorSpace(cameraSpacePoint[j], &colorPoint);
 						Point pt;
-						pt.x = colorPoint.X ;
-						pt.y = colorPoint.Y ;
+						pt.x = int(colorPoint.X  + 0.5);
+						pt.y = int(colorPoint.Y  + 0.5);
+						if (bRecordText)
+						{ 
+							char temp[32];
+							sprintf_s(temp, "%d %d %d", j, pt.x, pt.y);
+							bodyText_.Record(temp);
+						}
 						circle(skeletonImage, pt, 5, cvScalar(0, 0, 0), 1, 8, 0);
 					}
 					//nCount++;
